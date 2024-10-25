@@ -1,0 +1,8 @@
+services:
+  augment-example:
+    build:
+      context: .
+    volumes:
+      - ./example.jsonl:/example.jsonl
+      - ./output:/output
+    command: "python3 src/init.py -f /example.jsonl -o /output"
