@@ -2,6 +2,7 @@
 # then change project name to show it's more generalized
 
 import os
+from shutil import copy as shutil_copy
 from argparse import ArgumentParser
 from math import ceil
 from concurrent.futures import (
@@ -179,10 +180,9 @@ if __name__ == "__main__":
                 since --overwrite was used.
             ''')
 
-            # First, start by copying the existing contents of the dataset
-            with open(file, "r") as with_input_file:
-                with open(output_file, "w") as with_output_file:
-                    with_output_file.write(with_input_file.read())
+            print(f"Copying existing dataset {file} to {output_file}..")
+            shutil_copy(file, output_file)
+            print("Finished copy")
 
             # Don't allow user input to exceed processor count
             max_threads = min(args.max_threads, max(1, cpu_count))
