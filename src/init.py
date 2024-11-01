@@ -1,5 +1,6 @@
 import os
 from argparse import ArgumentParser
+from math import ceil
 from concurrent.futures import (
     ThreadPoolExecutor
 )
@@ -63,32 +64,45 @@ def augment_jsonl_file(
     file: str,
     destination: str
 ):
-    # Only use the amount of threads we will actually need
+    # Make max threads match max passes if max passes is less than
+    # total threads available (Don't use more threads than needed basically)
     max_threads = min(options.max_threads, options.max_passes)
+    max_passes = ceil(options.max_passes / max_threads)
 
     print(f"Using {max_threads} threads.")
 
     with open(file, "r") as file:
+        line_number = 0
         for line in tqdm(file):
-            with ThreadPoolExecutor(
-                max_workers=max_threads
-            ) as executor:
-                for future in tqdm([
-                    executor.submit(
-                        augment_jsonl_from_string,
-                        options,
-                        line
-                    ) for _ in range(max_threads)
-                ]):
-                    try:
-                        augmented_jsonl = future.result()
-                    except Exception as e:
-                        print(f'''
-                            Exception occurred when augmenting line: {line}
-                            {e}
-                        ''')
-                    else:
-                        append_jsonl_to_file(augmented_jsonl, destination)
+            line_number += 1
+            print(f"Processing line {line_number}, {line}", flush=True)
+
+            for num_pass in range(max_passes):
+                if max_passes > 1:
+                    print(
+                        f"pass {num_pass+1}, line {line_number}",
+                        flush=True
+                    )
+
+                with ThreadPoolExecutor(
+                    max_workers=max_threads
+                ) as executor:
+                    for future in tqdm([
+                        executor.submit(
+                            augment_jsonl_from_string,
+                            options,
+                            line
+                        ) for _ in range(max_threads)
+                    ]):
+                        try:
+                            augmented_jsonl = future.result()
+                        except Exception as e:
+                            print(f'''
+                                Exception occurred when augmenting line: {line}
+                                {e}
+                            ''')
+                        else:
+                            append_jsonl_to_file(augmented_jsonl, destination)
 
 
 if __name__ == "__main__":
