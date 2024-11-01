@@ -40,19 +40,28 @@ def augment_jsonl_from_string(
     else:
         if "instruction" not in jsonl:
             raise Exception("jsonl data has no 'instruction'")
-        if "output" not in jsonl:
-            raise Exception("jsonl data has no 'output'")
+
+        valid_response_keys = ["response", "output"]
+        response_key = next(
+            (key for key in valid_response_keys if key in jsonl),
+            None
+        )
+
+        if response_key is None:
+            raise Exception(f'''
+                jsonl data has none of these keys {valid_response_keys}
+            ''')
         try:
             augmented = options.synonym_aug.augment(
                 data=[
                     jsonl["instruction"],
-                    jsonl["output"]
+                    jsonl[response_key]
                 ]
             )
 
             # Replace the jsonl keys with the augmented versions
             jsonl["instruction"] = augmented[0]
-            jsonl["output"] = augmented[1]
+            jsonl[response_key] = augmented[1]
         except Exception as e:
             print(f"Exception occurred while augmenting jsonl object: {e}")
         else:
