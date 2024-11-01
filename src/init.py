@@ -1,3 +1,6 @@
+# TODO: Allow users to specify which keys to augment
+# then change project name to show it's more generalized
+
 import os
 from argparse import ArgumentParser
 from math import ceil
