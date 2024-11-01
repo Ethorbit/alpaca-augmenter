@@ -175,23 +175,23 @@ if __name__ == "__main__":
                 Overwriting existing {output_file}
                 since --overwrite was used.
             ''')
+
+            # First, start by copying the existing contents of the dataset
+            with open(file, "r") as with_input_file:
+                with open(output_file, "w") as with_output_file:
+                    with_output_file.write(with_input_file.read())
+
+            # Don't allow user input to exceed processor count
+            max_threads = min(args.max_threads, max(1, cpu_count))
+
+            aug_options = AugmentOptions()
+            aug_options.synonym_aug = naw.SynonymAug(aug_p=0.2)
+            aug_options.max_threads = max_threads
+            aug_options.max_passes = args.max_passes
+
+            augment_jsonl_file(aug_options, file, output_file)
         else:
             raise Exception(f'''
                 {output_file} already exists.
                 Please move or rename it and try running again.
             ''')
-
-    # First, start by copying the existing contents of the dataset
-    with open(file, "r") as with_input_file:
-        with open(output_file, "w") as with_output_file:
-            with_output_file.write(with_input_file.read())
-
-    # Don't allow user input to exceed processor count
-    max_threads = min(args.max_threads, max(1, cpu_count))
-
-    aug_options = AugmentOptions()
-    aug_options.synonym_aug = naw.SynonymAug(aug_p=0.2)
-    aug_options.max_threads = max_threads
-    aug_options.max_passes = args.max_passes
-
-    augment_jsonl_file(aug_options, file, output_file)
