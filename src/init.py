@@ -65,7 +65,7 @@ def augment_jsonl_file(
     destination: str
 ):
     # Make max threads match max passes if max passes is less than
-    # total threads available (Don't use more threads than needed basically)
+    # max threads (Don't use more threads than needed basically)
     max_threads = min(options.max_threads, options.max_passes)
     max_passes = ceil(options.max_passes / max_threads)
 
