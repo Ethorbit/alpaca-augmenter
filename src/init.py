@@ -1,10 +1,11 @@
 import os
-import argparse
+from argparse import ArgumentParser
 from concurrent.futures import (
     ThreadPoolExecutor
 )
+import json
 import nlpaug.augmenter.word as naw
-# import json
+from tqdm import tqdm
 
 
 class AugmentOptions():
@@ -13,16 +14,51 @@ class AugmentOptions():
     max_passes: int = 1
 
 
-def augment_line(
-    options: AugmentOptions,
-    line: str,
-    destination: str
+def append_jsonl_to_file(
+    jsonl: dict,
+    file: str
 ):
-    print(f"Processing {line}", flush=True)
-    print(options.synonym_aug.augment(line))
+    try:
+        with open(file, "a") as file:
+            file.write(json.dumps(jsonl) + "\n")
+    except Exception as e:
+        print(f'''
+            Exception occurred while appending to {output_file}:
+            {e}
+        ''')
 
 
-def augment_file(
+def augment_jsonl_from_string(
+    options: AugmentOptions,
+    data: str
+) -> dict:
+    try:
+        jsonl = json.loads(data)
+    except Exception as e:
+        print(f"Exception occurred loading line as json object: {e}")
+    else:
+        if "instruction" not in jsonl:
+            raise Exception("jsonl data has no 'instruction'")
+        if "output" not in jsonl:
+            raise Exception("jsonl data has no 'output'")
+        try:
+            augmented = options.synonym_aug.augment(
+                data=[
+                    jsonl["instruction"],
+                    jsonl["output"]
+                ]
+            )
+
+            # Replace the jsonl keys with the augmented versions
+            jsonl["instruction"] = augmented[0]
+            jsonl["output"] = augmented[1]
+        except Exception as e:
+            print(f"Exception occurred while augmenting jsonl object: {e}")
+        else:
+            return jsonl
+
+
+def augment_jsonl_file(
     options: AugmentOptions,
     file: str,
     destination: str
@@ -33,29 +69,30 @@ def augment_file(
     print(f"Using {max_threads} threads.")
 
     with open(file, "r") as file:
-        for line in file:
+        for line in tqdm(file):
             with ThreadPoolExecutor(
                 max_workers=max_threads
             ) as executor:
-                for future in [
+                for future in tqdm([
                     executor.submit(
-                        augment_line,
+                        augment_jsonl_from_string,
                         options,
-                        line,
-                        destination
+                        line
                     ) for _ in range(max_threads)
-                ]:
+                ]):
                     try:
-                        future.result()
+                        augmented_jsonl = future.result()
                     except Exception as e:
                         print(f'''
                             Exception occurred when augmenting line: {line}
                             {e}
                         ''')
+                    else:
+                        append_jsonl_to_file(augmented_jsonl, destination)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = ArgumentParser()
     parser.add_argument(
         "-f",
         "--file",
@@ -85,6 +122,17 @@ if __name__ == "__main__":
         help="How many CPU threads to make use of."
     )
 
+    parser.add_argument(
+        "--overwrite",
+        type=bool,
+        default=cpu_count,
+        help='''
+            If the output file exists,
+            overwrite it instead of
+            throwing an exception.
+        '''
+    )
+
     args = parser.parse_args()
     file = args.file
     file_name = os.path.basename(file)
@@ -92,21 +140,33 @@ if __name__ == "__main__":
 
     if not os.path.exists(file):
         raise Exception("--file specified is an invalid file.")
-    if not os.path.exists(output_dir) or not os.path.isdir(output_dir):
+    if not os.path.exists(output_dir):
+        raise Exception("--output specified is a path that doesn't exist.")
+    if not os.path.isdir(output_dir):
         raise Exception("--output specified is not a directory.")
 
     output_file = os.path.join(output_dir, file_name)
+    if os.path.exists(output_file):
+        if args.overwrite:
+            print(f'''
+                Overwriting existing {output_file}
+                since --overwrite was used.
+            ''')
+
+            with open(output_file, "w"):
+                pass
+        else:
+            raise Exception(f'''
+                {output_file} already exists.
+                Please move or rename it and try running again.
+            ''')
 
     # Don't allow user input to exceed processor count
     max_threads = min(args.max_threads, max(1, cpu_count))
 
     aug_options = AugmentOptions()
-    aug_options.synonym_aug = naw.SynonymAug(aug_p=0.1)
+    aug_options.synonym_aug = naw.SynonymAug(aug_p=0.2)
     aug_options.max_threads = max_threads
     aug_options.max_passes = args.max_passes
 
-    augment_file(
-        aug_options,
-        file,
-        output_file
-    )
+    augment_jsonl_file(aug_options, file, output_file)
