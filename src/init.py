@@ -125,7 +125,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--overwrite",
         type=bool,
-        default=cpu_count,
+        default=False,
         help='''
             If the output file exists,
             overwrite it instead of

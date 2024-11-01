@@ -5,4 +5,8 @@ services:
     volumes:
       - ./example.jsonl:/example.jsonl
       - ./output:/output
-    command: "python3 src/init.py -f /example.jsonl -o /output --max_passes=5"
+    command: python3 src/init.py
+        -f /example.jsonl
+        -o /output
+        --max_passes=5
+        --overwrite=True
