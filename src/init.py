@@ -85,9 +85,9 @@ def augment_jsonl_file(
 
     print(f"Using {max_threads} threads.")
 
-    with open(file, "r") as file:
+    with open(file, "r") as open_file:
         line_number = 0
-        for line in tqdm(file):
+        for line in tqdm(open_file):
             line_number += 1
             print(f"Processing line {line_number}, {line}", flush=True)
 
