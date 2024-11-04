@@ -24,8 +24,8 @@ def append_jsonl_to_file(
     file: str
 ):
     try:
-        with open(file, "a") as file:
-            file.write(json.dumps(jsonl) + "\n")
+        with open(file, "a") as open_file:
+            open_file.write(json.dumps(jsonl) + "\n")
     except Exception as e:
         print(f'''
             Exception occurred while appending to {output_file}:
