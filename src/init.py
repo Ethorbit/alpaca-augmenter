@@ -43,7 +43,7 @@ def augment_jsonl_from_string(
         print(f"Exception occurred loading line as json object: {e}")
     else:
         if "instruction" not in jsonl:
-            raise Exception("jsonl data has no 'instruction'")
+            raise ValueError("jsonl data has no 'instruction'")
 
         valid_response_keys = ["response", "output"]
         response_key = next(
@@ -52,7 +52,7 @@ def augment_jsonl_from_string(
         )
 
         if response_key is None:
-            raise Exception(f'''
+            raise ValueError(f'''
                 jsonl data has none of these keys {valid_response_keys}
             ''')
         try:
@@ -167,11 +167,11 @@ if __name__ == "__main__":
     output_dir = args.output
 
     if not os.path.exists(file):
-        raise Exception("--file specified is an invalid file.")
+        raise FileNotFoundError("--file specified is an invalid file.")
     if not os.path.exists(output_dir):
-        raise Exception("--output specified is a path that doesn't exist.")
+        raise FileNotFoundError("--output specified is a path that doesn't exist.")
     if not os.path.isdir(output_dir):
-        raise Exception("--output specified is not a directory.")
+        raise NotADirectoryError("--output specified is not a directory.")
 
     output_file = os.path.join(output_dir, file_name)
     if os.path.exists(output_file):
@@ -181,7 +181,7 @@ if __name__ == "__main__":
                 since --overwrite was used.
             ''')
         else:
-            raise Exception(f'''
+            raise FileExistsError(f'''
                 {output_file} already exists.
                 Please move or rename it and try running again.
             ''')
@@ -190,8 +190,13 @@ if __name__ == "__main__":
     shutil_copy(file, output_file)
     print("Finished copy")
 
-    # Don't allow user input to exceed processor count
-    max_threads = min(args.max_threads, max(1, cpu_count))
+    if isinstance(args.max_threads, int) and isinstance(cpu_count, int):
+        # Don't allow user input to exceed processor count
+        max_threads = min(args.max_threads, max(1, cpu_count))
+    else:
+        raise ValueError('''
+            cpu_count and max_threads must be a valid integer
+        ''')
 
     aug_options = AugmentOptions()
     aug_options.synonym_aug = naw.SynonymAug(aug_p=0.2)
