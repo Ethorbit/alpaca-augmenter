@@ -169,7 +169,9 @@ if __name__ == "__main__":
     if not os.path.exists(file):
         raise FileNotFoundError("--file specified is an invalid file.")
     if not os.path.exists(output_dir):
-        raise FileNotFoundError("--output specified is a path that doesn't exist.")
+        raise FileNotFoundError(
+            "--output specified is a path that doesn't exist."
+        )
     if not os.path.isdir(output_dir):
         raise NotADirectoryError("--output specified is not a directory.")
 
