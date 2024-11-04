@@ -179,22 +179,22 @@ if __name__ == "__main__":
                 Overwriting existing {output_file}
                 since --overwrite was used.
             ''')
-
-            print(f"Copying existing dataset {file} to {output_file}..")
-            shutil_copy(file, output_file)
-            print("Finished copy")
-
-            # Don't allow user input to exceed processor count
-            max_threads = min(args.max_threads, max(1, cpu_count))
-
-            aug_options = AugmentOptions()
-            aug_options.synonym_aug = naw.SynonymAug(aug_p=0.2)
-            aug_options.max_threads = max_threads
-            aug_options.max_passes = args.max_passes
-
-            augment_jsonl_file(aug_options, file, output_file)
         else:
             raise Exception(f'''
                 {output_file} already exists.
                 Please move or rename it and try running again.
             ''')
+
+    print(f"Copying existing dataset {file} to {output_file}..")
+    shutil_copy(file, output_file)
+    print("Finished copy")
+
+    # Don't allow user input to exceed processor count
+    max_threads = min(args.max_threads, max(1, cpu_count))
+
+    aug_options = AugmentOptions()
+    aug_options.synonym_aug = naw.SynonymAug(aug_p=0.2)
+    aug_options.max_threads = max_threads
+    aug_options.max_passes = args.max_passes
+
+    augment_jsonl_file(aug_options, file, output_file)
