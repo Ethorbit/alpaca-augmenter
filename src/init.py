@@ -70,6 +70,7 @@ def augment_jsonl_from_string(
             print(f"Exception occurred while augmenting jsonl object: {e}")
         else:
             return jsonl
+    return {}
 
 
 def augment_jsonl_file(
