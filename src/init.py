@@ -124,6 +124,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-f",
         "--file",
+        required=True,
         type=str,
         help="Jsonl file to augment"
     )
@@ -131,6 +132,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-o",
         "--output",
+        required=True,
         type=str,
         help="Directory to store augmented file"
     )
