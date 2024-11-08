@@ -138,6 +138,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "-nc",
         "--nlpaug_synonym_config",
         required=True,
         type=str,
