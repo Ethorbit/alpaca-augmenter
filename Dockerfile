@@ -7,11 +7,11 @@ USER python
 WORKDIR /home/python
 
 FROM base AS project_requirements
-COPY ./requirements.txt ./requirements.txt
+COPY --chown=python:python ./requirements.txt ./requirements.txt
 RUN pip install -r ./requirements.txt
 
 FROM project_requirements AS nltk_installation
 RUN python -m nltk.downloader all
 
 FROM nltk_installation AS alpaca-agumenter
-COPY ./src ./src
+COPY --chown=python:python ./src ./src
