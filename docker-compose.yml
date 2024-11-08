@@ -5,8 +5,10 @@ services:
     volumes:
       - ./example.jsonl:/example.jsonl
       - ./output:/output
+      - ./nlpaug_synonym.json:/nlpaug.json
     command: python3 src/init.py
         -f /example.jsonl
         -o /output
+        --nlpaug_synonym_config /nlpaug.json
         --max_passes=5
         --overwrite=True

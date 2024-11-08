@@ -138,6 +138,21 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--nlpaug_synonym_config",
+        required=True,
+        type=str,
+        help='''
+            File that contains the settings for
+            nlpaug's SynonymAug
+
+            More info here:
+            https://nlpaug.readthedocs.io/en/latest/
+            augmenter/word/synonym.html?highlight=synonymaug
+            #nlpaug.augmenter.word.synonym.SynonymAug
+        '''
+    )
+
+    parser.add_argument(
         "--max_passes",
         type=int,
         default=1,
@@ -164,9 +179,19 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+    nlpaug_synonym_file = args.nlpaug_synonym_config
     file = args.file
     file_name = os.path.basename(file)
     output_dir = args.output
+
+    if not os.path.exists(nlpaug_synonym_file):
+        raise FileNotFoundError(
+            "--nlpaug_synonym_config points to a nonexistent file."
+        )
+    if os.path.isdir(nlpaug_synonym_file):
+        raise IsADirectoryError(
+            "--nlpaug_synonym_config specified is not pointing to a file."
+        )
 
     if not os.path.exists(file):
         raise FileNotFoundError("--file specified is an invalid file.")
@@ -203,7 +228,10 @@ if __name__ == "__main__":
         ''')
 
     aug_options = AugmentOptions()
-    aug_options.synonym_aug = naw.SynonymAug(aug_p=0.2)
+    with open(nlpaug_synonym_file, "r") as config:
+        aug_options.synonym_aug = naw.SynonymAug(
+            **json.loads(config.read())
+        )
     aug_options.max_threads = max_threads
     aug_options.max_passes = args.max_passes
 
