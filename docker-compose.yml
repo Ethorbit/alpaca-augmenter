@@ -10,5 +10,7 @@ services:
         -f /example.jsonl
         -o /output
         -nsc /nlpaug.json
+        -k instruction
+        -k output
         --max_passes=5
         --overwrite=True

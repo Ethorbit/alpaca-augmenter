@@ -1,13 +1,11 @@
-# TODO: Allow users to specify which keys to augment
-# then change project name to show it's more generalized
-
 import os
 from shutil import copy as shutil_copy
 from argparse import ArgumentParser
 from math import ceil
 from concurrent.futures import (
-    ThreadPoolExecutor
+    ThreadPoolExecutor  # for processing multiple lines of a file (all threads)
 )
+import asyncio          # for augmenting properties of a line and IO (1 thread)
 import json
 import nlpaug.augmenter.word as naw
 from tqdm import tqdm
@@ -15,10 +13,14 @@ from tqdm import tqdm
 
 class AugmentOptions():
     synonym_aug: naw.SynonymAug = None
+    keys: list[str] = []
     max_threads: int = 1
     max_passes: int = 1
 
 
+# TODO: make asynchronous
+# we should not block thread
+# just to append to a file..
 def append_jsonl_to_file(
     jsonl: dict,
     file: str
@@ -33,43 +35,52 @@ def append_jsonl_to_file(
         ''')
 
 
+# Augment a string that has jsonl structure
 def augment_jsonl_from_string(
     options: AugmentOptions,
     data: str
 ) -> dict:
     try:
-        jsonl = json.loads(data)
+        async def augment(key, value) -> dict:
+            try:
+                augmented = options.synonym_aug.augment(value)
+                return {key: augmented[0]}
+            except Exception as e:
+                print(f'''
+                    Exception occurred when augmenting key: {key}
+
+                    {e}
+                ''')
+                return {}
+
+        async def make_code_async() -> dict:
+            jsonl = json.loads(data)
+            augmented_jsonl: dict = {}
+            augment_tasks: list[asyncio.Task] = []
+
+            for key, value in jsonl.items():
+                if key in options.keys:
+                    augment_tasks.append(
+                        asyncio.create_task(augment(key, value))
+                    )
+                else:
+                    # we don't want to augment this,
+                    # so just add it as is
+                    augmented_jsonl[key] = value
+
+            # Merge augmented key values into one dict, return it
+            for result in await asyncio.gather(*augment_tasks):
+                augmented_jsonl.update(result)
+
+            return augmented_jsonl
+
+        return asyncio.run(make_code_async())
     except Exception as e:
-        print(f"Exception occurred loading line as json object: {e}")
-    else:
-        if "instruction" not in jsonl:
-            raise ValueError("jsonl data has no 'instruction'")
+        print(f'''
+            Error augmenting jsonl string: {data}
 
-        valid_response_keys = ["response", "output"]
-        response_key = next(
-            (key for key in valid_response_keys if key in jsonl),
-            None
-        )
-
-        if response_key is None:
-            raise ValueError(f'''
-                jsonl data has none of these keys {valid_response_keys}
-            ''')
-        try:
-            augmented = options.synonym_aug.augment(
-                data=[
-                    jsonl["instruction"],
-                    jsonl[response_key]
-                ]
-            )
-
-            # Replace the jsonl keys with the augmented versions
-            jsonl["instruction"] = augmented[0]
-            jsonl[response_key] = augmented[1]
-        except Exception as e:
-            print(f"Exception occurred while augmenting jsonl object: {e}")
-        else:
-            return jsonl
+            {e}
+        ''')
     return {}
 
 
@@ -154,6 +165,18 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "-k",
+        "--key",
+        required=True,
+        type=str,
+        action="append",
+        help='''
+            Specify a key that we are allowed to
+            augment from the jsonl file.
+        '''
+    )
+
+    parser.add_argument(
         "--max_passes",
         type=int,
         default=1,
@@ -229,11 +252,12 @@ if __name__ == "__main__":
         ''')
 
     aug_options = AugmentOptions()
+    aug_options.keys = args.key
+    aug_options.max_threads = max_threads
+    aug_options.max_passes = args.max_passes
     with open(nlpaug_synonym_file, "r") as config:
         aug_options.synonym_aug = naw.SynonymAug(
             **json.loads(config.read())
         )
-    aug_options.max_threads = max_threads
-    aug_options.max_passes = args.max_passes
 
     augment_jsonl_file(aug_options, file, output_file)
