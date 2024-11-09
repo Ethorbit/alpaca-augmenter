@@ -13,5 +13,5 @@ RUN pip install -r ./requirements.txt
 FROM project_requirements AS nltk_installation
 RUN python -m nltk.downloader all
 
-FROM nltk_installation AS alpaca-agumenter
+FROM nltk_installation
 COPY --chown=python:python ./src ./src
