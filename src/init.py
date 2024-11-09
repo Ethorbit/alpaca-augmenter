@@ -18,16 +18,13 @@ class AugmentOptions():
     max_passes: int = 1
 
 
-# TODO: make asynchronous
-# we should not block thread
-# just to append to a file..
-def append_jsonl_to_file(
+async def append_jsonl_to_file(
     jsonl: dict,
     file: str
 ):
     try:
         with open(file, "a") as open_file:
-            open_file.write(json.dumps(jsonl) + "\n")
+            await asyncio.to_thread(open_file.write, json.dumps(jsonl) + "\n")
     except Exception as e:
         print(f'''
             Exception occurred while appending to {output_file}:
@@ -84,7 +81,7 @@ def augment_jsonl_from_string(
     return {}
 
 
-def augment_jsonl_file(
+async def augment_jsonl_file(
     options: AugmentOptions,
     file: str,
     destination: str
@@ -111,6 +108,8 @@ def augment_jsonl_file(
                         flush=True
                     )
 
+                append_tasks: list[asyncio.Task] = []
+
                 with ThreadPoolExecutor(
                     max_workers=max_threads
                 ) as executor:
@@ -122,18 +121,27 @@ def augment_jsonl_file(
                         ) for _ in range(max_threads)
                     ]):
                         try:
-                            if (append_count >= options.max_passes):
-                                break
-
                             augmented_jsonl = future.result()
-                            append_count += 1
                         except Exception as e:
                             print(f'''
                                 Exception occurred when augmenting line: {line}
                                 {e}
                             ''')
                         else:
-                            append_jsonl_to_file(augmented_jsonl, destination)
+                            if (append_count >= options.max_passes):
+                                break
+
+                            append_tasks.append(
+                                asyncio.create_task(
+                                    append_jsonl_to_file(
+                                        augmented_jsonl,
+                                        destination
+                                    )
+                                )
+                            )
+
+                            append_count += 1
+                await asyncio.wait(append_tasks)
 
 
 if __name__ == "__main__":
@@ -266,4 +274,5 @@ if __name__ == "__main__":
             **json.loads(config.read())
         )
 
-    augment_jsonl_file(aug_options, file, output_file)
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(augment_jsonl_file(aug_options, file, output_file))
