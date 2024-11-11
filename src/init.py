@@ -7,6 +7,7 @@ from concurrent.futures import (
 )
 import asyncio          # for augmenting properties of a line and IO (1 thread)
 import json
+import re
 import nlpaug.augmenter.word as naw
 from tqdm import tqdm
 
@@ -37,11 +38,27 @@ def augment_jsonl_from_string(
     options: AugmentOptions,
     data: str
 ) -> dict:
+    # https://github.com/makcedward/nlpaug/issues/143
+    # suggested fix using custom tokenizers
+    def your_tokenizer(text):
+        return text.split(' ')
+
+    def your_reverse_tokenizer(text_list):
+        return ' '.join(text_list)
+
     try:
         async def augment(key, value) -> dict:
             try:
+                options.synonym_aug.tokenizer = your_tokenizer
+                options.synonym_aug.reverse_tokenizer = your_reverse_tokenizer
                 augmented = options.synonym_aug.augment(value)
-                return {key: augmented[0]}
+
+                if isinstance(augmented, str):
+                    result = augmented
+                if isinstance(augmented, list):
+                    result = augmented[0]
+
+                return {key: result}
             except Exception as e:
                 print(f'''
                     Exception occurred when augmenting key: {key}
