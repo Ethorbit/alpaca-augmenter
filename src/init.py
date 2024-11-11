@@ -7,7 +7,6 @@ from concurrent.futures import (
 )
 import asyncio          # for augmenting properties of a line and IO (1 thread)
 import json
-import re
 import nlpaug.augmenter.word as naw
 from tqdm import tqdm
 
